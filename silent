@@ -1,186 +1,276 @@
-
-getgenv().SilentAim = {
-	Settings = {
-		Enabled = true,
-		AimPart = "Head",
-		Prediction = 0.155,
-		WallCheck = true
-	},
-	FOV = {
-		Enabled = true,
-		Size = 150,
-		Filled = false,
-		Thickness = 0.66,
-		Transparency = 0.5,
-		Color = Color3.fromHSV(tick() % 5 / 5, 1, 1)
-	}
-}
-local lp = game:GetService("Players").LocalPlayer
-local cc = game:GetService("Workspace").CurrentCamera
-local mouse = lp:GetMouse()
-getgenv().PredictionBackUp = getgenv().SilentAim.Settings.Prediction
-local cc = game:GetService("Workspace").CurrentCamera
-local mouse = lp:GetMouse()
-
-local Utility = {
-    Invite = "camlock",
-    BackupInvite = "VfKf5dvSYX",
-    Version = "1.0.0a",
-    Method = "UpdateMousePos",
-    AllowedPlaceIDs = {
-        2788229376, -- Da Hood
-        7213786345, -- Da Hood VC
-        9825515356, -- Hood Customs
-        5602055394, -- Hood Modded
-        7951883376, -- Hood Modded VC
-        12927359803, -- Dah Aim Trainer
-        12867571492, -- KatanaHood
-        7242996350, -- Da Hood Aim Trainer
-        12884917481, -- Da Hood Aim Trainer VC
-        11867820563, -- Dae Hood
-        12618586930, -- Dat Hood
+getgenv().NasEbk = {
+    ['KOCheck'] = true,
+    ['Silent Aim'] = {
+        ['Enabled'] = true,
+        ['Prediction'] = 0.122,
+        ['Part'] = "HumanoidRootPart", -- too lazy to add closest part
+        ['Nearest Point'] = true,
+        ['Nearest Point Mode'] = "Full", -- options are Generic, Full, Partial, Scalar
+        ['EnableJumpPart'] = false,
+        ['JumpPart'] = "Head",
+        ['Field Of View'] = {
+            ['Visible'] = true,
+            ['Color'] = Color3.new(255, 255, 255),
+            ['Radius'] = 180,
+            ['Transparency'] = 0.07
+        },
+        ['Resolver'] = {
+            ['Enabled'] = true, -- current settings not recommended with nearest point
+            ['Smoothing'] = 0.025,
+            ['Process'] = 0.1,
+            ['Measurement'] = 0.1,
+            ['Estimate'] = 1,
+        }
     }
 }
 
-if game.PlaceId == 2788229376 or game.PlaceId == 7213786345 then -- // Da Hood
-    Utility.Method = "UpdateMousePos"
-        MainRemote = game:GetService("ReplicatedStorage").MainEvent
-elseif game.PlaceId == 5602055394 or game.PlaceId == 7951883376 then -- // Hood Modded
-    Utility.Method = "MousePos"
-        MainRemote = game:GetService("ReplicatedStorage").Bullets 
-elseif game.PlaceId == 12927359803 then -- // Dah Aim Trainer
-    Utility.Method = "UpdateMousePos"
-        MainRemote = game:GetService("ReplicatedStorage").MainEvent
-elseif game.PlaceId == 7242996350 or game.PlaceId == 12884917481 then -- // Da Hood Aim Trainer
-    Utility.Method = "UpdateMousePos" 
-        MainRemote = game:GetService("ReplicatedStorage").MainEvent
-elseif game.PlaceId == 12867571492 then -- // Katana Hood
-    Utility.Method = "UpdateMousePos"
-        MainRemote = game:GetService("ReplicatedStorage").MainEvent
-elseif game.PlaceId == 11867820563 then -- // Dae Hood
-    Utility.Method = "UpdateMousePos"
-        MainRemote = game:GetService("ReplicatedStorage").MainEvent
-elseif game.PlaceId == 12618586930 then -- // Dat Hood
-    Utility.Method = "UpdateMousePos"
-        MainRemote = game:GetService("ReplicatedStorage").MainEvent
+local players = game.Players
+local lp = players.LocalPlayer
+local rs = game:GetService("RunService")
+local p = getgenv().NasEbk
+local m = lp:GetMouse()
+local c = workspace.CurrentCamera
+local SilentTarget = nil
+
+local Circle = Drawing.new("Circle")
+
+getgenv().NasEbk_Connections = {}
+
+-- Clamp function
+local function Clamp(value, min, max)
+    return math.max(min, math.min(value, max))
 end
 
-WTS = (function(Object)
-	local ObjectVector = cc:WorldToScreenPoint(Object.Position)
-	return Vector2.new(ObjectVector.X, ObjectVector.Y)
-end)
+-- Nearest Point function (unchanged)
+local function GetNearestPointOnTarget(Target)
+    local LocalMouse = lp:GetMouse()
+    local HitPosition = LocalMouse.Hit.Position
+    local NearestPosition = nil
+    local MinDistance = math.huge
 
-Filter = (function(obj)
-	if (obj:IsA('BasePart')) then
-		return true
-	end
-end)
+    -- Iterate through all parts of the target
+    for _, part in pairs(Target.Character:GetChildren()) do
+        if part:IsA("BasePart") then
+            local PartCenter = part.Position
+            local PartSize = part.Size
+            local Half = PartSize / 2
 
-mousePosVector2 = (function()
-	return Vector2.new(mouse.X, mouse.Y) 
-end)
+            local NearestPoint
+            local Type = p['Silent Aim']['Nearest Point Mode']
 
-getClosestBodyPart = (function()
-	local shortestDistance = math.huge
-	local bodyPart = nil
-	for _, v in next, game.Players:GetPlayers() do
-		if (v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid")) then
-			for k, x in next, v.Character:GetChildren() do
-				if (Filter(x)) then
-					local Distance = (WTS(x) - mousePosVector2()).magnitude
-					if (Distance < shortestDistance) then
-						shortestDistance = Distance
-						bodyPart = x
-					end
-				end
-			end
-		end
-	end
-	return bodyPart
-end)
-local FOVCircle = Drawing.new("Circle")
-function updateFOV()
-	FOVCircle.Radius = SilentAim.FOV.Size * 3
-	FOVCircle.Visible = SilentAim.FOV.Enabled
-	FOVCircle.Transparency = SilentAim.FOV.Transparency
-	FOVCircle.Filled = SilentAim.FOV.Filled
-	FOVCircle.Color = SilentAim.FOV.Color
-	FOVCircle.Thickness = SilentAim.FOV.Thickness
-	FOVCircle.Position = Vector2.new(game:GetService("UserInputService"):GetMouseLocation().X, game:GetService("UserInputService"):GetMouseLocation().Y)
-	return FOVCircle
+            if Type == "Generic" then
+                NearestPoint = Vector3.new(
+                    Clamp(HitPosition.X, PartCenter.X - Half.X, PartCenter.X + Half.X),
+                    Clamp(HitPosition.Y, PartCenter.Y - Half.Y, PartCenter.Y + Half.Y),
+                    Clamp(HitPosition.Z, PartCenter.Z - Half.Z, PartCenter.Z + Half.Z)
+                )
+            elseif Type == "Full" then
+                local Transform = part.CFrame:PointToObjectSpace(HitPosition)
+                NearestPoint = part.CFrame * Vector3.new(
+                    Clamp(Transform.X, -Half.X, Half.X),
+                    Clamp(Transform.Y, -Half.Y, Half.Y),
+                    Clamp(Transform.Z, -Half.Z, Half.Z)
+                )
+            elseif Type == "Partial" then
+                local LocalPosition = part.CFrame:pointToObjectSpace(HitPosition)
+                local Size = PartSize / 2
+                local x = Clamp(LocalPosition.X, -Size.X, Size.X)
+                local y = Clamp(LocalPosition.Y, -Size.Y, Size.Y)
+                local z = Clamp(LocalPosition.Z, -Size.Z, Size.Z)
+                NearestPoint = part.CFrame:pointToWorldSpace(Vector3.new(x, y, z))
+            elseif Type == "Scalar" then
+                local Transform = part.CFrame:PointToObjectSpace(HitPosition)
+                NearestPoint = part.CFrame * Vector3.new(
+                    Clamp(Transform.X, -Half.X, Half.X), 
+                    Clamp(Transform.Y, -Half.Y, Half.Y), 
+                    Clamp(Transform.Z, -Half.Z, Half.Z)
+                )
+            end
+
+            -- Check distance to the nearest point
+            local Distance = (HitPosition - NearestPoint).Magnitude
+            if Distance < MinDistance then
+                MinDistance = Distance
+                NearestPosition = NearestPoint
+            end
+        end
+    end
+
+    return NearestPosition
 end
 
-local plrService = game:GetService("Players")
-local localPlr = plrService.LocalPlayer
-local mouseLocal = localPlr:GetMouse()
-local Players, Client, Mouse, Camera =
-    game:GetService("Players"),
-    game:GetService("Players").LocalPlayer,
-    game:GetService("Players").LocalPlayer:GetMouse(),
-    game:GetService("Workspace").CurrentCamera
+-- Kalman Filter Implementation
+local Smoothing = p['Silent Aim']['Resolver']['Smoothing']
+local Process = p['Silent Aim']['Resolver']['Process']
+local Measurement = p['Silent Aim']['Resolver']['Measurement']
+local Estimate = p['Silent Aim']['Resolver']['Estimate']
+local Gain = 0
 
+local Data = {
+    Position = Vector3.new(0, 0, 0),
+    Velocity = Vector3.new(0, 0, 0),
+    Acceleration = Vector3.new(0, 0, 0)
+}
 
-function wallCheck(destination, ignore)
-	if (getgenv().SilentAim.Settings.WallCheck) then
-		local Origin = Camera.CFrame.p
-		local CheckRay = Ray.new(Origin, destination - Origin)
-		local Hit = game:GetService("Workspace"):FindPartOnRayWithIgnoreList(CheckRay, ignore)
-		return Hit == nil
-	else
-		return true
-	end
+local function CalculateKalman(deltaTime, CurrentPosition, PreviousPosition, PreviousVelocity, PreviousAcceleration)
+    local CurrentVelocity = (CurrentPosition - PreviousPosition) / deltaTime
+    local PredictedPosition = PreviousPosition + Data.Velocity * deltaTime
+    local PredictedVelocity = PreviousVelocity
+
+    Gain = Estimate / (Estimate + Measurement)
+
+    local CorrectedPosition = PredictedPosition + Gain * (CurrentPosition - PredictedPosition)
+    local CorrectedVelocity = PredictedVelocity + Gain * (CurrentVelocity - PredictedVelocity)
+    Estimate = (1 - Gain) * Estimate + Process
+
+    local Alpha = Smoothing / (Smoothing + deltaTime)
+    local SmoothedVelocity = Data.Velocity + Alpha * (CorrectedVelocity - Data.Velocity)
+    local SmoothedAcceleration = Alpha * Data.Acceleration + (1 - Alpha) * (SmoothedVelocity - Data.Velocity) / deltaTime
+
+    return SmoothedVelocity, SmoothedAcceleration
 end
 
-function getClosestPlayerToCursor()
-	closestDist = SilentAim.FOV.Size * 3.47
-	closestPlr = nil;
-	for i, v in next, plrService:GetPlayers() do
-		pcall(function()
-			local notKO = v.Character:WaitForChild("BodyEffects")["K.O"].Value ~= true;
-			local notGrabbed = v.Character:FindFirstChild("GRABBING_COINSTRAINT") == nil
-			if v ~= localPlr and v.Character and v.Character.Humanoid.Health > 0 and notKO and notGrabbed then
-				local screenPos, cameraVisible = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
-				if cameraVisible then
-					local distToMouse = (Vector2.new(mouseLocal.X, mouseLocal.Y) - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
-					if distToMouse < closestDist and wallCheck(v.Character.Head.Position, {
-						game:GetService("Players").LocalPlayer,
-						v.Character
-					}) then
-						closestPlr = v
-						closestDist = distToMouse
-					end
-				end
-			end
-		end)
-	end
-	return closestPlr, closestDist
+local function BuildVelocity(deltaTime, Target)
+    if Target and Target.Character then
+        local CurrentPosition = Target.Character.HumanoidRootPart.Position
+        local CurrentVelocity, CurrentAcceleration = CalculateKalman(
+            deltaTime, CurrentPosition, Data.Position, Data.Velocity, Data.Acceleration
+        )
+
+        Data.Position = CurrentPosition
+        Data.Velocity = CurrentVelocity
+        Data.Acceleration = CurrentAcceleration
+
+        return CurrentVelocity
+    end
 end
 
-spawn(function()
-	while wait() do
-		Plr = getClosestPlayerToCursor()
-	end
-end)
-
-spawn(function()
-	while wait() do
-		if Plr ~= nil and Plr.Character.Humanoid.FloorMaterial ~= Enum.Material.Air then
-			local Ping = math.floor(game.Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-			getgenv().SilentAim.Settings.Prediction = Ping / 1000 + 0.07
-		end
-	end
-end)
-
-game:GetService("RunService").Heartbeat:connect(function()
-	updateFOV()
-end)
-
-game.Players.LocalPlayer.Character.ChildAdded:Connect(function(tool)
-    if tool:IsA("Tool") then -- add a better check for if the tool is a weapon 
-        tool.Activated:Connect(function() -- fuck a :Disconnect lol
-			if Plr ~= nil then
-            	game:GetService("ReplicatedStorage").MainEvent:FireServer(Utility.Method, Plr.Character[SilentAim.Settings.AimPart].Position + (Plr.Character[SilentAim.Settings.AimPart].Velocity * SilentAim.Settings.Prediction))
-			end
-        end)
+-- Update velocity using the resolver in RenderStepped
+rs.RenderStepped:Connect(function(deltaTime)
+    if p['Silent Aim']['Resolver'].Enabled and SilentTarget then
+        BuildVelocity(deltaTime, SilentTarget)
     end
 end)
+
+-- Other parts of the Silent Aim logic (unchanged)
+local renderSteppedConnection = rs.RenderStepped:Connect(function()
+    Circle.Visible = p['Silent Aim']['Field Of View'].Visible
+    Circle.Color = p['Silent Aim']['Field Of View'].Color
+    Circle.Radius = p['Silent Aim']['Field Of View'].Radius
+    Circle.Transparency = p['Silent Aim']['Field Of View'].Transparency
+    Circle.Position = Vector2.new(m.X, m.Y + (game:GetService("GuiService"):GetGuiInset().Y))
+end)
+
+table.insert(getgenv().NasEbk_Connections, renderSteppedConnection)
+
+local function Flags(Plr)
+    local Dead = nil
+    if Plr and Plr.Character and game.PlaceId == 2788229376 or 7213786345 or 16033173781 or 9825515356 and p.KOCheck then
+        if Plr.Character:FindFirstChild("BodyEffects") then
+            if Plr.Character.BodyEffects:FindFirstChild("K.O") then
+                Dead = Plr.Character.BodyEffects["K.O"].Value
+            elseif Plr.Character.BodyEffects:FindFirstChild("KO") then
+                Dead = Plr.Character.BodyEffects.KO.Value
+            end
+        end
+    end
+    return Dead
+end
+
+local function GetClosestPlr()
+    local ClosestTarget = nil
+    local MaxDistance = math.huge
+
+    for _, index in pairs(players:GetPlayers()) do
+        if index.Name ~= lp.Name and index.Character and index.Character:FindFirstChild("HumanoidRootPart") then
+            local Position, OnScreen = c:WorldToScreenPoint(index.Character.HumanoidRootPart.Position)
+            local Distance = (Vector2.new(Position.X, Position.Y) - Vector2.new(m.X, m.Y)).Magnitude
+
+            if not OnScreen then
+                continue
+            end
+
+            if Circle.Radius > Distance and Distance < MaxDistance then
+                ClosestTarget = index
+                MaxDistance = Distance
+            end
+        end
+    end
+    return ClosestTarget
+end
+
+local renderSteppedSilentAimConnection = rs.RenderStepped:Connect(function()
+    if p['Silent Aim'].Enabled then
+        SilentTarget = GetClosestPlr()
+    end
+end)
+
+table.insert(getgenv().NasEbk_Connections, renderSteppedSilentAimConnection)
+
+local function args()
+    local arg = nil
+
+    if game.PlaceId == 2788229376 then
+        arg = "UpdateMousePosI"
+    elseif game.PlaceId == 16033173781 then
+        arg = "UpdateMousePosI"
+    elseif game.PlaceId == 7213786345 then
+        arg = "UpdateMousePosI"
+    elseif game.PlaceId == 9825515356 then
+        arg = "MousePosUpdate"
+    elseif game.PlaceId == 15186202290 then
+        arg = "MOUSE"
+    else
+        arg = "MOUSE"
+    end
+
+    return arg
+end
+
+local function Velocity(Plr, Part)
+    return Plr.Character[Part].Velocity
+end
+
+local OldPart = p['Silent Aim'].Part
+local function SilentMain(index)
+    local Event = game.ReplicatedStorage:FindFirstChild("MAINEVENT")
+    local Arguements = args()
+    if index:IsA("Tool") then
+        index.Activated:Connect(function()
+            if SilentTarget and SilentTarget.Character and Event and not Flags(SilentTarget) then
+                if p['Silent Aim'].EnableJumpPart then
+                    if SilentTarget.Character[p['Silent Aim'].Part].Velocity.Y < -20 then
+                        p['Silent Aim'].Part = p['Silent Aim'].JumpPart
+                    else
+                        p['Silent Aim'].Part = OldPart
+                    end
+                end
+
+                local EndPosition
+                if p['Silent Aim']['Nearest Point'] then
+                    EndPosition = GetNearestPointOnTarget(SilentTarget)
+                else
+                    EndPosition = SilentTarget.Character[p['Silent Aim'].Part].Position
+                end
+
+                EndPosition = EndPosition + Velocity(SilentTarget, p['Silent Aim'].Part) * p['Silent Aim'].Prediction
+                Event:FireServer(Arguements, EndPosition)
+            end
+        end)
+    end
+end
+
+local function onCharacterAdded(character)
+    character.ChildAdded:Connect(SilentMain)
+    for _, tool in pairs(character:GetChildren()) do
+        SilentMain(tool)
+    end
+end
+
+local characterAddedConnection = lp.CharacterAdded:Connect(onCharacterAdded)
+
+table.insert(getgenv().NasEbk_Connections, characterAddedConnection)
+
+if lp.Character then
+    onCharacterAdded(lp.Character)
+end
